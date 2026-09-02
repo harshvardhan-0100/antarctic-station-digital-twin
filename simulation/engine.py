@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 from simulation.state import StationState
 from simulation.environment import Environment
 from simulation.thermal import ThermalModel
@@ -61,3 +63,44 @@ class SimulationEngine:
         station.indoor_temperature = new_indoor_temperature
 
         return station
+
+    def run(
+    self,
+    station: StationState,
+    environments: list[Environment],
+    heating_power_kw: float
+) -> list[StationState]:
+        """
+        Run the simulation across multiple environmental timesteps.
+
+        Parameters
+        ----------
+        station:
+            Initial state of the station.
+
+        environments:
+            Sequence of environmental conditions, one for each timestep.
+
+        heating_power_kw:
+            Constant thermal power supplied during the simulation.
+
+        Returns
+        -------
+        list[StationState]:
+            History of station states over the simulation.
+        """
+
+        history = []
+
+        for environment in environments:
+            station.timestamp = environment.timestamp
+
+            station = self.step(
+                station=station,
+                environment=environment,
+                heating_power_kw=heating_power_kw
+            )
+
+            history.append(deepcopy(station))
+
+        return history
