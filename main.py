@@ -1,5 +1,6 @@
 from simulation.state import StationState
 from simulation.environment import Environment
+from simulation.thermal import ThermalModel
 
 
 def main():
@@ -18,8 +19,20 @@ def main():
         humidity=environment.humidity_percent
     )
 
+    thermal_model = ThermalModel()
+
+    heat_loss = thermal_model.calculate_heat_loss(
+        indoor_temperature=station.indoor_temperature,
+        outdoor_temperature=environment.temperature_c,
+        wind_speed=environment.wind_speed_ms
+    )
+
+    station.thermal_demand_kw = heat_loss
+
+
     print(environment)
     print(station)
+    print(f"\nCalculated Heat Loss: {heat_loss:.2f} kW")
 
 
 if __name__ == "__main__":
