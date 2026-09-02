@@ -1,6 +1,7 @@
 from simulation.state import StationState
 from simulation.environment import Environment
 from simulation.thermal import ThermalModel
+from simulation.engine import SimulationEngine
 
 
 def main():
@@ -21,29 +22,19 @@ def main():
 
     thermal_model = ThermalModel()
 
-    heat_loss = thermal_model.calculate_heat_loss(
-        indoor_temperature=station.indoor_temperature,
-        outdoor_temperature=environment.temperature_c,
-        wind_speed=environment.wind_speed_ms
-    )
-
-    station.thermal_demand_kw = heat_loss
-
-    new_indoor_temperature = thermal_model.update_indoor_temperature(
-        current_temperature=station.indoor_temperature,
-        heating_power_kw=30.0,
-        heat_loss_kw=heat_loss,
+    engine = SimulationEngine(
+        thermal_model=thermal_model,
         time_step_hours=1.0
     )
 
+    station = engine.step(
+        station=station,
+        environment=environment,
+        heating_power_kw=30.0
+    )
 
     print(environment)
     print(station)
-    print(f"\nCalculated Heat Loss: {heat_loss:.2f} kW")
-    print(
-        f"\nIndoor Temperature After 1 Hour: "
-        f"{new_indoor_temperature:.2f} °C"
-    )
 
 
 if __name__ == "__main__":
