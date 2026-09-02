@@ -29,10 +29,21 @@ def main():
 
     station.thermal_demand_kw = heat_loss
 
+    new_indoor_temperature = thermal_model.update_indoor_temperature(
+        current_temperature=station.indoor_temperature,
+        heating_power_kw=30.0,
+        heat_loss_kw=heat_loss,
+        time_step_hours=1.0
+    )
+
 
     print(environment)
     print(station)
     print(f"\nCalculated Heat Loss: {heat_loss:.2f} kW")
+    print(
+        f"\nIndoor Temperature After 1 Hour: "
+        f"{new_indoor_temperature:.2f} °C"
+    )
 
 
 if __name__ == "__main__":

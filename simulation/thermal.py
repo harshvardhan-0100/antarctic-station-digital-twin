@@ -58,3 +58,48 @@ class ThermalModel:
         )
 
         return total_heat_loss_watts / 1000
+
+    def update_indoor_temperature(
+        self,
+        current_temperature: float,
+        heating_power_kw: float,
+        heat_loss_kw: float,
+        time_step_hours: float = 1.0,
+        thermal_capacity_j_per_k: float = 5e8
+    ) -> float:
+        """
+        Update indoor temperature based on the net thermal energy
+        entering or leaving the building.
+
+        Parameters
+        ----------
+        current_temperature:
+            Current indoor temperature in °C.
+
+        heating_power_kw:
+            Thermal power supplied to the building in kW.
+
+        heat_loss_kw:
+            Thermal power lost to the environment in kW.
+
+        time_step_hours:
+            Simulation timestep in hours.
+
+        thermal_capacity_j_per_k:
+            Effective thermal capacitance of the station in J/K.
+        """
+
+        net_power_kw = heating_power_kw - heat_loss_kw
+
+        net_energy_joules = (
+            net_power_kw
+            * 1000
+            * time_step_hours
+            * 3600
+        )
+
+        temperature_change = (
+            net_energy_joules / thermal_capacity_j_per_k
+        )
+
+        return current_temperature + temperature_change
