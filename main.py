@@ -1,14 +1,24 @@
 from simulation.state import StationState
+from simulation.environment import Environment
 
 
 def main():
-    station = StationState(
+    environment = Environment(
         timestamp="2026-01-01 00:00",
-        outside_temperature=-25.0,
-        wind_speed=18.0,
-        humidity=70.0
+        temperature_c=-25.0,
+        wind_speed_ms=18.0,
+        humidity_percent=70.0,
+        pressure_hpa=990.0
     )
 
+    station = StationState(
+        timestamp=environment.timestamp,
+        outside_temperature=environment.temperature_c,
+        wind_speed=environment.wind_speed_ms,
+        humidity=environment.humidity_percent
+    )
+
+    print(environment)
     print(station)
 
 
