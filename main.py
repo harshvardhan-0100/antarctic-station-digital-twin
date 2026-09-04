@@ -1,55 +1,56 @@
-from simulation.state import StationState
-from simulation.thermal import ThermalModel
-from simulation.engine import SimulationEngine
-from simulation.scenarios import antarctic_storm_scenario
-from simulation.controller import ThermalController
+class ThermalController:
+    """
+    Physics-aware thermal controller.
 
+    Combines feed-forward heat-loss compensation with
+    proportional temperature feedback.
+    """
 
-def main():
+    def __init__(
+        self,
+        target_temperature: float = 20.0,
+        max_heating_power_kw: float = 100.0,
+        proportional_gain: float = 15.0
+    ):
+        self.target_temperature = target_temperature
+        self.max_heating_power_kw = max_heating_power_kw
+        self.proportional_gain = proportional_gain
 
-    # Test Thermal Controller independently
-    controller = ThermalController()
+    def calculate_heating_power(
+        self,
+        indoor_temperature: float,
+        heat_loss_kw: float
+    ) -> float:
+        """
+        Calculate required heating power.
 
-    print("\nTHERMAL CONTROLLER TEST")
-    print("=" * 40)
+        Uses:
+        - Feed-forward compensation for predicted heat loss
+        - Proportional feedback for temperature correction
+        """
 
-    print(controller.calculate_heating_power(20.0))
-    print(controller.calculate_heating_power(19.0))
-    print(controller.calculate_heating_power(18.0))
-    print(controller.calculate_heating_power(15.0))
-
-    station = StationState(
-        timestamp="2026-01-01 00:00",
-        outside_temperature=-24.0,
-        wind_speed=12.0,
-        humidity=70.0
-    )
-
-    environments = antarctic_storm_scenario()
-
-    thermal_model = ThermalModel()
-
-    engine = SimulationEngine(
-        thermal_model=thermal_model,
-        time_step_hours=1.0
-    )
-
-    history = engine.run(
-        station=station,
-        environments=environments,
-        heating_power_kw=30.0
-    )
-
-    print("\nANTARCTIC STORM SCENARIO")
-    print("=" * 75)
-
-    for state in history:
-        print(
-            f"{state.timestamp} | "
-            f"Indoor: {state.indoor_temperature:6.2f} °C | "
-            f"Thermal Demand: {state.thermal_demand_kw:7.2f} kW"
+        temperature_error = (
+            self.target_temperature - indoor_temperature
         )
 
+        feedback_power_kw = (
+            temperature_error * self.proportional_gain
+        )
 
-if __name__ == "__main__":
-    main()
+        heating_power_kw = (
+            heat_loss_kw + feedback_power_kw
+        )
+
+        # No negative heating
+        heating_power_kw = max(
+            0.0,
+            heating_power_kw
+        )
+
+        # Respect physical heating capacity
+        heating_power_kw = min(
+            heating_power_kw,
+            self.max_heating_power_kw
+        )
+
+        return heating_power_kw
