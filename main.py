@@ -2,9 +2,21 @@ from simulation.state import StationState
 from simulation.thermal import ThermalModel
 from simulation.engine import SimulationEngine
 from simulation.scenarios import antarctic_storm_scenario
+from simulation.controller import ThermalController
 
 
 def main():
+
+    # Test Thermal Controller independently
+    controller = ThermalController()
+
+    print("\nTHERMAL CONTROLLER TEST")
+    print("=" * 40)
+
+    print(controller.calculate_heating_power(20.0))
+    print(controller.calculate_heating_power(19.0))
+    print(controller.calculate_heating_power(18.0))
+    print(controller.calculate_heating_power(15.0))
 
     station = StationState(
         timestamp="2026-01-01 00:00",

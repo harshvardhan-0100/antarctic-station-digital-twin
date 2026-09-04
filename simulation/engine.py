@@ -1,3 +1,5 @@
+from simulation.controller import ThermalController
+
 from copy import deepcopy
 
 from simulation.state import StationState
@@ -14,16 +16,18 @@ class SimulationEngine:
     def __init__(
         self,
         thermal_model: ThermalModel,
+        thermal_controller: ThermalController | None = None,
         time_step_hours: float = 1.0
     ):
         self.thermal_model = thermal_model
+        self.thermal_controller = thermal_controller
         self.time_step_hours = time_step_hours
 
     def step(
         self,
         station: StationState,
         environment: Environment,
-        heating_power_kw: float
+        heating_power_kw: float | None = None
     ) -> StationState:
         """
         Advance the station simulation by one timestep.
@@ -40,6 +44,17 @@ class SimulationEngine:
             Thermal power supplied to the station.
         """
 
+        # Determine heating power
+        if self.thermal_controller is not None:
+            heating_power_kw = (
+                self.thermal_controller.calculate_heating_power(
+                    indoor_temperature=station.indoor_temperature
+                )
+            )
+
+        elif heating_power_kw is None:
+            heating_power_kw = 0.0
+
         # Calculate heat loss to the environment
         heat_loss_kw = self.thermal_model.calculate_heat_loss(
             indoor_temperature=station.indoor_temperature,
@@ -50,7 +65,7 @@ class SimulationEngine:
         # Update thermal demand
         station.thermal_demand_kw = heat_loss_kw
 
-        # Update indoor temperature
+        # Calculate new indoor temperature
         new_indoor_temperature = (
             self.thermal_model.update_indoor_temperature(
                 current_temperature=station.indoor_temperature,
@@ -60,16 +75,17 @@ class SimulationEngine:
             )
         )
 
+        # Updata station state
         station.indoor_temperature = new_indoor_temperature
 
         return station
 
     def run(
-    self,
-    station: StationState,
-    environments: list[Environment],
-    heating_power_kw: float
-) -> list[StationState]:
+        self,
+        station: StationState,
+        environments: list[Environment],
+        heating_power_kw: float | None = None
+    ) -> list[StationState]:
         """
         Run the simulation across multiple environmental timesteps.
 
@@ -79,10 +95,12 @@ class SimulationEngine:
             Initial state of the station.
 
         environments:
-            Sequence of environmental conditions, one for each timestep.
+            Sequence of environmental conditions,
+            one for each timestep.
 
         heating_power_kw:
-            Constant thermal power supplied during the simulation.
+            Fixed heating power supplied during the simulation.
+            Ignored if a thermal controller is present.
 
         Returns
         -------
@@ -93,14 +111,18 @@ class SimulationEngine:
         history = []
 
         for environment in environments:
+
+            # Synchronize simulation time
             station.timestamp = environment.timestamp
 
+            # Advance one timestep
             station = self.step(
                 station=station,
                 environment=environment,
                 heating_power_kw=heating_power_kw
             )
 
+            # Store independent snapshot
             history.append(deepcopy(station))
 
         return history
