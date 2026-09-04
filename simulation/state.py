@@ -26,29 +26,56 @@ class GeneratorState:
 @dataclass
 class StationState:
     """
-    Represents the complete state of the Antarctic station
-    at a particular point in simulated time.
+    Represents the complete operational state of the Antarctic
+    research station at a particular point in simulated time.
+
+    This acts as the central state object shared between the
+    environmental, thermal, electrical, generator, fuel,
+    and simulation engine models.
     """
 
-    # Time
+    # -------------------------------------------------
+    # TIME
+    # -------------------------------------------------
+
     timestamp: str
 
-    # Environmental state
+
+    # -------------------------------------------------
+    # ENVIRONMENTAL STATE
+    # -------------------------------------------------
+
     outside_temperature: float
     wind_speed: float
     humidity: float = 0.0
 
-    # Building state
-    indoor_temperature: float = 20.0
 
-    # Energy demand
-    electrical_demand_kw: float = 0.0
+    # -------------------------------------------------
+    # BUILDING / THERMAL STATE
+    # -------------------------------------------------
+
+    indoor_temperature: float = 20.0
     thermal_demand_kw: float = 0.0
 
-    # Fuel system
+
+    # -------------------------------------------------
+    # ELECTRICAL STATE
+    # -------------------------------------------------
+
+    electrical_demand_kw: float = 0.0
+
+
+    # -------------------------------------------------
+    # FUEL SYSTEM
+    # -------------------------------------------------
+
     fuel_level_liters: float = 300000.0
 
-    # CHP generators
+
+    # -------------------------------------------------
+    # CHP GENERATORS
+    # -------------------------------------------------
+
     generators: List[GeneratorState] = field(
         default_factory=lambda: [
             GeneratorState(id=1),
@@ -57,32 +84,40 @@ class StationState:
         ]
     )
 
+
     def __str__(self):
+
         generator_info = "\n".join(
-            f"  {generator}" for generator in self.generators
+            f"  {generator}"
+            for generator in self.generators
         )
 
         return (
             "\n"
-            "========================================\n"
-            "      BHARATI STATION DIGITAL TWIN\n"
-            "========================================\n"
+            "================================================\n"
+            "           BHARATI STATION DIGITAL TWIN\n"
+            "================================================\n"
             f"Time:                {self.timestamp}\n"
+
             "\n"
             "ENVIRONMENT\n"
             f"  Outside Temp:      {self.outside_temperature:.1f} °C\n"
             f"  Wind Speed:        {self.wind_speed:.1f} m/s\n"
             f"  Humidity:          {self.humidity:.1f} %\n"
+
             "\n"
             "STATION\n"
-            f"  Indoor Temp:       {self.indoor_temperature:.1f} °C\n"
-            f"  Electrical Demand: {self.electrical_demand_kw:.1f} kW\n"
-            f"  Thermal Demand:    {self.thermal_demand_kw:.1f} kW\n"
+            f"  Indoor Temp:       {self.indoor_temperature:.2f} °C\n"
+            f"  Electrical Demand: {self.electrical_demand_kw:.2f} kW\n"
+            f"  Thermal Demand:    {self.thermal_demand_kw:.2f} kW\n"
+
             "\n"
             "FUEL\n"
             f"  Remaining:         {self.fuel_level_liters:,.0f} L\n"
+
             "\n"
             "CHP UNITS\n"
             f"{generator_info}\n"
-            "========================================"
+
+            "================================================"
         )

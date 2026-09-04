@@ -4,6 +4,7 @@ from simulation.state import StationState
 from simulation.environment import Environment
 from simulation.thermal import ThermalModel
 from simulation.controller import ThermalController
+from simulation.electrical import ElectricalModel
 
 
 class SimulationEngine:
@@ -12,18 +13,17 @@ class SimulationEngine:
     the Antarctic station Digital Twin through time.
 
     Current responsibilities:
-    - Process environmental conditions
-    - Calculate station heat loss
-    - Determine heating power
-    - Update thermal demand
-    - Update indoor temperature
-    - Store timestep history
+    - Environmental state synchronization
+    - Thermal demand calculation
+    - Adaptive thermal control
+    - Indoor temperature dynamics
+    - Electrical load calculation
+    - Simulation history management
 
     Future extensions:
-    - Electrical load modelling
-    - CHP dispatch
+    - CHP generator dispatch
     - Fuel consumption
-    - Asset health
+    - Energy optimisation
     - Fault injection
     - Resilience analysis
     """
@@ -31,10 +31,12 @@ class SimulationEngine:
     def __init__(
         self,
         thermal_model: ThermalModel,
+        electrical_model: ElectricalModel,
         thermal_controller: ThermalController | None = None,
         time_step_hours: float = 1.0
     ):
         self.thermal_model = thermal_model
+        self.electrical_model = electrical_model
         self.thermal_controller = thermal_controller
         self.time_step_hours = time_step_hours
 
@@ -45,50 +47,21 @@ class SimulationEngine:
         heating_power_kw: float | None = None
     ) -> StationState:
         """
-        Advance the Digital Twin by one simulation timestep.
-
-        Parameters
-        ----------
-        station:
-            Current station state.
-
-        environment:
-            Environmental conditions for the current timestep.
-
-        heating_power_kw:
-            Fixed heating power to use when no thermal controller
-            is attached.
-
-            If a thermal controller exists, this value is ignored
-            and heating power is determined automatically.
-
-        Returns
-        -------
-        StationState
-            Updated station state after one timestep.
+        Advance the station simulation by one timestep.
         """
 
-        # ---------------------------------------------------------
-        # 1. Synchronize environmental state
-        # ---------------------------------------------------------
+        # -------------------------------------------------
+        # 1. Synchronize environmental conditions
+        # -------------------------------------------------
 
         station.timestamp = environment.timestamp
+        station.outside_temperature = environment.temperature_c
+        station.wind_speed = environment.wind_speed_ms
+        station.humidity = environment.humidity_percent
 
-        station.outside_temperature = (
-            environment.temperature_c
-        )
-
-        station.wind_speed = (
-            environment.wind_speed_ms
-        )
-
-        station.humidity = (
-            environment.humidity_percent
-        )
-
-        # ---------------------------------------------------------
-        # 2. Calculate heat loss
-        # ---------------------------------------------------------
+        # -------------------------------------------------
+        # 2. Calculate thermal heat loss
+        # -------------------------------------------------
 
         heat_loss_kw = (
             self.thermal_model.calculate_heat_loss(
@@ -98,13 +71,11 @@ class SimulationEngine:
             )
         )
 
-        # Thermal demand currently corresponds to the heat
-        # required to compensate for environmental heat loss.
         station.thermal_demand_kw = heat_loss_kw
 
-        # ---------------------------------------------------------
+        # -------------------------------------------------
         # 3. Determine heating power
-        # ---------------------------------------------------------
+        # -------------------------------------------------
 
         if self.thermal_controller is not None:
 
@@ -116,15 +87,13 @@ class SimulationEngine:
             )
 
         elif heating_power_kw is None:
-
-            # No controller and no externally supplied heat.
             heating_power_kw = 0.0
 
-        # ---------------------------------------------------------
+        # -------------------------------------------------
         # 4. Update indoor temperature
-        # ---------------------------------------------------------
+        # -------------------------------------------------
 
-        new_indoor_temperature = (
+        station.indoor_temperature = (
             self.thermal_model.update_indoor_temperature(
                 current_temperature=station.indoor_temperature,
                 heating_power_kw=heating_power_kw,
@@ -133,13 +102,19 @@ class SimulationEngine:
             )
         )
 
-        station.indoor_temperature = (
-            new_indoor_temperature
+        # -------------------------------------------------
+        # 5. Calculate electrical demand
+        # -------------------------------------------------
+
+        hour = int(
+            environment.timestamp.split()[1].split(":")[0]
         )
 
-        # ---------------------------------------------------------
-        # 5. Return updated station state
-        # ---------------------------------------------------------
+        station.electrical_demand_kw = (
+            self.electrical_model.calculate_electrical_load(
+                hour=hour
+            )
+        )
 
         return station
 
@@ -150,27 +125,10 @@ class SimulationEngine:
         heating_power_kw: float | None = None
     ) -> list[StationState]:
         """
-        Run the Digital Twin across multiple timesteps.
-
-        Parameters
-        ----------
-        station:
-            Initial station state.
-
-        environments:
-            Environmental conditions for each timestep.
-
-        heating_power_kw:
-            Constant heating power used when no thermal controller
-            is attached.
-
-        Returns
-        -------
-        list[StationState]
-            Independent snapshots of the station state across time.
+        Run the simulation across multiple timesteps.
         """
 
-        history: list[StationState] = []
+        history = []
 
         for environment in environments:
 
@@ -180,9 +138,7 @@ class SimulationEngine:
                 heating_power_kw=heating_power_kw
             )
 
-            # Deep copy is essential because StationState is mutable.
-            # Without this, every history entry would point to the
-            # same final station object.
+            # Store an independent snapshot
             history.append(
                 deepcopy(station)
             )
